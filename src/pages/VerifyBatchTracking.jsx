@@ -1,29 +1,67 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { useOutletContext } from 'react-router-dom';
+
+// Helper function to generate a timestamp for a specific role
+const generateRoleTimestamp = (baseDate, roleIndex) => {
+  const date = new Date(baseDate);
+  // Add exactly one day for each subsequent role
+  date.setDate(date.getDate() + roleIndex);
+  
+  // Randomize hours and minutes while keeping the date progressive
+  date.setHours(Math.floor(Math.random() * 24));
+  date.setMinutes(Math.floor(Math.random() * 60));
+
+  // Format the date to match the existing timestamp format
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }).replace(',', '');
+};
+
+// Predefined roles in strict hierarchical order
+const TRACKING_ROLES = [
+  "Manufacturer",
+  "Distributor", 
+  "Wholesaler", 
+  "Retailer"
+];
 
 export default function VerifyBatchTracking() {
-  // Sample batch data with tracking information
-  const [batches] = useState([
-    {
-      id: "BATCH001",
-      name: "Covid Vaccine",
-      tracking: [
-        { role: "Distributor", timestamp: "2025-03-01 10:00 AM" },
-        { role: "Wholesaler", timestamp: "2025-03-02 03:30 PM" },
-        { role: "Retailer", timestamp: "2025-03-03 06:45 PM" },
-      ],
-    },
-    {
-      id: "BATCH002",
-      name: "Flu Shot",
-      tracking: [
-        { role: "Distributor", timestamp: "2025-03-04 09:15 AM" },
-        { role: "Wholesaler", timestamp: "2025-03-05 12:45 PM" },
-        { role: "Retailer", timestamp: "2025-03-06 05:00 PM" },
-      ],
-    },
-  ]);
-
+  const { batches } = useOutletContext(); 
   const [selectedBatch, setSelectedBatch] = useState(null);
+
+  // Memoized batches with tracking information
+  const enhancedBatches = useMemo(() => {
+    return batches.map(batch => ({
+      ...batch,
+      tracking: generateTrackingDetails(batch)
+    }));
+  }, [batches]);
+
+  // Function to generate tracking details for a batch
+  function generateTrackingDetails(batch) {
+    // Get current date and time for Manufacturer
+    const manufacturerTimestamp = new Date().toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).replace(',', '');
+
+    // Create tracking entries with timestamps exactly one day apart
+    return TRACKING_ROLES.map((role, index) => ({
+      role,
+      timestamp: index === 0 
+        ? manufacturerTimestamp 
+        : generateRoleTimestamp(new Date(), index)
+    }));
+  }
 
   return (
     <div className="p-6">
@@ -31,7 +69,7 @@ export default function VerifyBatchTracking() {
 
       {/* Batch List */}
       <div className="grid md:grid-cols-2 sm:grid-cols-1 gap-6">
-        {batches.map((batch) => (
+        {enhancedBatches.map((batch) => (
           <div
             key={batch.id}
             className="bg-white p-6 shadow-lg rounded-lg cursor-pointer hover:bg-gray-100"
@@ -50,7 +88,7 @@ export default function VerifyBatchTracking() {
             <h3 className="text-xl font-semibold text-blue-600">{selectedBatch.name}</h3>
             <p className="text-gray-500">Batch ID: {selectedBatch.id}</p>
             <div className="mt-4">
-              <h4 className="font-semibold text-gray-700">Signed By:</h4>
+              <h4 className="font-semibold text-gray-700">Tracking Details:</h4>
               <ul className="mt-2 space-y-2">
                 {selectedBatch.tracking.map((entry, index) => (
                   <li key={index} className="bg-gray-100 p-2 rounded-md">
